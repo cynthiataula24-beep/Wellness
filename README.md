@@ -11,10 +11,10 @@ Data Synchronization: Seamless communication between the Android client and the 
 JSON-based API: Efficient data handling using a custom-built REST API.
 
 # Tech Stack
-Frontend: Kotlin (Android Studio)
+Frontend: Kotlin 
 
-Backend: Python / Flask
+Backend: Python - Flask
 
-Database: SQLAlchemy / SQLite (or your preferred DB)
+Database: SQLAlchemy
 
 Architecture: MVC (Model-View-Controller)
