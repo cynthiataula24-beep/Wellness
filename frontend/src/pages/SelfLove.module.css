@@ -1,0 +1,52 @@
+.chapterCard {
+  background: #cee7f7;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  border: 1px solid #cee7f7 !important;
+  
+  min-height: 300px;
+}
+
+.chapterCard:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 15px 30px rgba(189, 155, 122, 0.15) !important;
+}
+
+.weekCard {
+  background: #cee7f7;
+  border-radius: 15px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.weekCard:hover {
+  background-color: #fff9f4;
+  border-left: 5px solid #ffb07c;
+}
+
+.dayCard {
+  border-radius: 18px;
+  border-left: 4px solid #8dcdf5 !important;
+}
+
+.bgSoftPrimary {
+  background-color: #cee7f7;
+}
+
+.textPrimary {
+  color: #056ffa !important;
+}
+
+.textareaFocus:focus {
+  background-color: #e0eef7 !important;
+  border-color: #54b4f0;
+  box-shadow: 0 0 6px #69bff5;
+}
+.badge{
+    background-color: #059cfa;
+    font-size: 1.5em;
+    border-radius: 50px;
+    
+
+}

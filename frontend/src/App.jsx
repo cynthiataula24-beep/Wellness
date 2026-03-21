@@ -1,58 +1,84 @@
-import { useState, useEffect } from "react";
-import axios from "axios";
-import "./index.css";
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import React from "react";
+import Home from "./pages/Home";
+import MoodTracker from "./pages/MoodTracker";
+import WellnessTips from "./pages/WellnessTips";
+import ChatAssistant from "./pages/ChatAssistant";
+import Journal from "./pages/Journal";
+import Goals from "./pages/Goals";
+import SelfLove from "./pages/SelfLove";
+import Login from "./pages/Login";
+import "./App.css";
 
-function App() {
-  const [text, setText] = useState("");
-  const [result, setResult] = useState(null);
+import Navbar from "./components/Navbar";
+import Footer from './components/Footer';
 
-  async function handleAnalyze(e) {
-    e.preventDefault();
-    try {
-      const res = await axios.post("http://127.0.0.1:5000/analyze", { text });
-      setResult(res.data);
-    } catch (err) {
-      console.error(err);
-    }
-  }
+import 'bootstrap/dist/css/bootstrap.min.css';
+import 'bootstrap/dist/js/bootstrap.bundle.min.js';
 
-  useEffect(() => {
-    if (result) {
-      const history = JSON.parse(localStorage.getItem("moodHistory") || "[]");
-      history.push({ text, ...result, timestamp: Date.now() });
-      localStorage.setItem("moodHistory", JSON.stringify(history));
-    }
-  }, [result]);
+// --- PrivateRoute wrapper ---
+const PrivateRoute = ({ children }) => {
+  const token = localStorage.getItem("access_token");
+  // Check for both existence and the string "null" which can happen with localStorage
+  const isAuthenticated = token && token !== "null";
+  return isAuthenticated ? children : <Navigate to="/login" />;
+};
+
+// --- Internal component to use useLocation() ---
+const AppContent = () => {
+  const location = useLocation();
+  const isLoginPage = location.pathname === "/login";
+
+  // Grab the token from storage to pass to components that need it
+  const token = localStorage.getItem("access_token");
 
   return (
-    <div className="container">
-      <h1>Mood Check-in</h1>
-      <form onSubmit={handleAnalyze}>
-        <textarea
-          rows="4"
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          placeholder="How are you feeling today?"
-        />
-        <button type="submit">Analyze Mood</button>
-      </form>
-
-      {result && (
-        <div style={{ marginTop: "20px" }}>
-          <p><strong>Emotion Detected:</strong> {result.emotion}</p>
-          <p><strong>Exercise:</strong> {result.recommendations.exercise}</p>
-          <p><strong>Journaling Prompt:</strong> {result.recommendations.prompt}</p>
+    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
+      <Navbar />
+      
+      {/* Main takes available space pushing footer down */}
+      <main style={{ flex: 1 }}>
+        {/* We keep the container for content alignment, except on Login if needed */}
+        <div className={isLoginPage ? "" : "container py-4"}>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            
+            <Route path="/" element={<PrivateRoute><Home /></PrivateRoute>} />
+            <Route path="/mood" element={<PrivateRoute><MoodTracker /></PrivateRoute>} />
+            <Route path="/tips" element={<PrivateRoute><WellnessTips /></PrivateRoute>} />
+            
+            {/* CRITICAL FIX: Passed the token prop to ChatAssistant 
+                so it can authorize its API calls.
+            */}
+            <Route 
+              path="/chat" 
+              element={
+                <PrivateRoute>
+                  <ChatAssistant token={token} />
+                </PrivateRoute>
+              } 
+            />
+            
+            <Route path="/journal" element={<PrivateRoute><Journal /></PrivateRoute>} />
+            <Route path="/goals" element={<PrivateRoute><Goals /></PrivateRoute>} />
+            <Route path="/selfLove" element={<PrivateRoute><SelfLove /></PrivateRoute>} />
+            
+            {/* Catch-all redirect to home */}
+            <Route path="*" element={<Navigate to="/" />} />
+          </Routes>
         </div>
-      )}
+      </main>
 
-      <button
-        onClick={() => alert(localStorage.getItem("moodHistory"))}
-        style={{ marginTop: "10px", backgroundColor: "transparent", color: "blue", textDecoration: "underline", padding: 0, border: "none", cursor: "pointer" }}
-      >
-        View Mood History
-      </button>
+      {/* Footer is now at the root level, so it spans 100% width */}
+      <Footer />
     </div>
   );
-}
+};
 
-export default App;
+export default function App() {
+  return (
+    <Router>
+      <AppContent />
+    </Router>
+  );
+}

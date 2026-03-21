@@ -1,5 +1,6 @@
 package com.example.wellnessapp
 
+import okhttp3.ResponseBody
 import retrofit2.Call
 import retrofit2.http.Body
 import retrofit2.http.DELETE
@@ -33,5 +34,66 @@ interface ApiService {
         fun clearJournal(
             @Header("Authorization") token: String
         ): Call<Void>
-    }
 
+
+
+    @DELETE("clear_chat")
+    fun clearChat(
+        @Header("Authorization") token: String
+    ): Call<Void>
+
+
+    // FIXES: Unresolved reference: getAssistantSettings
+    @GET("assistant_settings")
+    fun getAssistantSettings(
+        @Header("Authorization") token: String
+    ): Call<AssistantSettingsResponse>
+
+    // FIXES: Unresolved reference: getChatHistory
+    @GET("chat_history")
+    fun getChatHistory(
+        @Header("Authorization") token: String
+    ): Call<List<ChatMessage>>
+
+    @POST("chat_history")
+    fun saveChatMessage(
+        @Header("Authorization") token: String,
+        @Body message: ChatMessage
+    ): Call<ResponseBody>
+
+    @POST("chat")
+    fun sendChat(
+        @Header("Authorization") token: String,
+        @Body request: ChatRequest
+    ): Call<ChatResponse>
+
+    @DELETE("chat_history")
+    fun clearChatHistory(
+        @Header("Authorization") token: String
+    ): Call<ResponseBody>
+}
+
+
+// Matches AssistantSettings.to_dict()
+data class AssistantSettingsResponse(
+    val assistantName: String?,
+    val assistantPic: String?
+)
+
+// Matches ChatMessage.to_dict()
+data class ChatMessage(
+    val text: String,
+    val sender: String, // "user" or "ai"
+    val timestamp: Long,
+    val dateGroup: String
+)
+
+// For the POST /chat request
+data class ChatRequest(
+    val messages: List<ChatMessage>
+)
+
+// For the POST /chat response
+data class ChatResponse(
+    val reply: String
+)

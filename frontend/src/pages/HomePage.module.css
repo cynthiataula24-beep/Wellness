@@ -1,0 +1,47 @@
+.home {
+  background: linear-gradient(180deg, #dbeafe 0%, #bfdbfe 100%); /* light blue gradient */
+  min-height: 100vh;
+  padding: 2rem;
+  color: #1e3a8a; /* deep blue text for contrast */
+}
+
+.greeting {
+  font-size: 1.8rem;
+  font-weight: 600;
+  color: #1e40af; /* slightly darker blue for headings */
+}
+
+.subtext {
+  color: #3b82f6; /* medium blue for subtext */
+}
+
+.card {
+  background: #f0f9ff; /* very light blue card background */
+  border: 1px solid #93c5fd; /* soft blue border */
+  border-radius: 16px;
+  color: #1e3a8a; /* dark blue text */
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 6px 12px rgba(59, 130, 246, 0.2); /* subtle blue shadow */
+}
+
+.btn {
+  border-radius: 12px;
+  font-weight: 500;
+}
+
+.quoteCard {
+  background: #e0f2fe; /* pale sky blue */
+  border-radius: 16px;
+  text-align: center;
+  border: 1px solid #93c5fd;
+}
+
+.quote {
+  font-size: 1.2rem;
+  font-style: italic;
+  color: #2563eb; /* vibrant blue for quote text */
+}

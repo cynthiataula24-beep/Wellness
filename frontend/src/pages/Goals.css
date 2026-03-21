@@ -1,0 +1,74 @@
+.habit-container {
+  max-width: 900px;
+}
+
+.habit-card {
+  transition: transform 0.2s ease;
+  border-radius: 15px;
+}
+
+.habit-card:hover {
+  transform: translateY(-5px);
+}
+
+/* Progress Circle Logic */
+.progress-circle {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.inner-circle {
+  width: 48px;
+  height: 48px;
+  background: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Weekly Streak Dots */
+.streak-dot {
+  width: 35px;
+  height: 35px;
+  border-radius: 10px;
+  background: #dee2e6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: bold;
+  color: #6c757d;
+}
+
+.streak-dot.active {
+  background: #0d6efd;
+  color: white;
+}
+
+/* Previous styles remain same, add these below: */
+
+.goal-completed {
+  background-color: #f8fff9 !important; /* Subtle green background */
+  border: 1px solid #d1e7dd !important;
+  opacity: 0.85;
+}
+
+.habit-card {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid transparent;
+}
+
+.form-control:focus {
+  border-color: #0d6efd;
+  box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.1);
+}
+
+.modal-content {
+  overflow: hidden;
+}

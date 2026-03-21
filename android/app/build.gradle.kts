@@ -62,6 +62,8 @@ dependencies {
 
     implementation ("androidx.compose.foundation:foundation:1.6.0" )// or latest stable
 
+        implementation("io.coil-kt:coil-compose:2.6.0")
+    
 
 
     // Networking
