@@ -48,6 +48,10 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
     implementation("com.google.android.material:material:1.12.0")
+    
+        implementation("androidx.compose.material:material-icons-extended")
+
+    implementation("com.patrykandpatrick.vico:compose-m3:1.13.0")
 
     // Compose
     implementation(platform(libs.androidx.compose.bom))
@@ -69,6 +73,7 @@ dependencies {
     // Networking
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
     implementation("com.squareup.retrofit2:converter-gson:2.9.0")
+    implementation(libs.androidx.media3.common.ktx)
 
 
     testImplementation(libs.junit)

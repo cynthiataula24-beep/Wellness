@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 import google.generativeai as genai
 import nltk
 from flask_cors import CORS  # <--- 1. Import this
+from datetime import datetime
 # --- Download VADER lexicon once ---
 nltk.download("vader_lexicon")
 
@@ -48,48 +49,7 @@ def home():
     """Health check route."""
     return {"message": "Gemini Chat backend is running!"}
 
-# --- Mood analysis route ---
-@app.route("/analyze", methods=["POST"])
-def analyze():
-    body = request.get_json() or {}
-    text = body.get("text", "").strip()
 
-    if not text:
-        return jsonify({
-            "compound": 0.0,
-            "emotion": "neutral",
-            "recommendation": "Please enter some text to analyze."
-        })
-
-    try:
-        # Use global SentimentIntensityAnalyzer
-        scores = sia.polarity_scores(text)
-        compound = scores.get("compound", 0.0)
-
-        # Map compound score to emotion + recommendation
-        if compound >= 0.3:
-            emotion = "happy"
-            recommendation = "Keep smiling! Maybe share your joy with a friend."
-        elif compound <= -0.3:
-            emotion = "sad"
-            recommendation = "Take a deep breath, maybe try journaling or a short walk."
-        else:
-            emotion = "neutral"
-            recommendation = "Stay mindful and keep tracking your mood."
-
-        return jsonify({
-            "compound": compound,
-            "emotion": emotion,
-            "recommendation": recommendation
-        })
-
-    except Exception as e:
-        print("Error in /analyze:", e)
-        return jsonify({
-            "compound": 0.0,
-            "emotion": "neutral",
-            "recommendation": "Error analyzing mood. Please try again later."
-        }), 500
 
 # --- Chat route ---
 @app.route("/chat", methods=["POST"])
@@ -397,6 +357,93 @@ def clear_chat_history():
     db.session.commit()
     return jsonify({"msg": "Chat history cleared"})
 
+# --- ADD THIS TO YOUR IMPORTS AT THE TOP ---
+
+
+# --- MOOD LOG MODEL (Updated Fix) ---
+class MoodLog(db.Model):
+    __tablename__ = "mood_logs"
+    id = db.Column(db.Integer, primary_key=True)
+    # Changed 'user.id' to 'users.id' to match your User table name
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    text = db.Column(db.Text, nullable=False)
+    compound = db.Column(db.Float, nullable=False)
+    emotion = db.Column(db.String(50))
+    recommendation = db.Column(db.Text)
+    date = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "text": self.text,
+            "compound": self.compound,
+            "emotion": self.emotion,
+            "recommendation": self.recommendation,
+            "date": self.date.isoformat()
+        }
+
+# --- UPDATED MOOD ROUTES ---
+
+@app.route("/analyze", methods=["POST"])
+@jwt_required() # Now requires login to save to database
+def analyze():
+    user_id = get_jwt_identity()
+    body = request.get_json() or {}
+    text = body.get("text", "").strip()
+
+    if not text:
+        return jsonify({"msg": "Please enter some text to analyze."}), 400
+
+    try:
+        # 1. Sentiment Analysis logic
+        scores = sia.polarity_scores(text)
+        compound = scores.get("compound", 0.0)
+
+        if compound >= 0.3:
+            emotion, recommendation = "happy", "Keep smiling! Maybe share your joy with a friend."
+        elif compound <= -0.3:
+            emotion, recommendation = "sad", "Take a deep breath, maybe try journaling or a short walk."
+        else:
+            emotion, recommendation = "neutral", "Stay mindful and keep tracking your mood."
+
+        # 2. SAVE TO DATABASE
+        new_log = MoodLog(
+            user_id=int(user_id),
+            text=text,
+            compound=compound,
+            emotion=emotion,
+            recommendation=recommendation
+        )
+        db.session.add(new_log)
+        db.session.commit()
+
+        # 3. Return the saved object
+        return jsonify(new_log.to_dict()), 201
+
+    except Exception as e:
+        db.session.rollback()
+        print("Error in /analyze:", e)
+        return jsonify({"msg": "Error analyzing/saving mood."}), 500
+
+@app.route("/mood_history", methods=["GET"])
+@jwt_required()
+def get_mood_history():
+    user_id = get_jwt_identity()
+    # Fetch logs for this user, newest first
+    logs = MoodLog.query.filter_by(user_id=int(user_id)).order_by(MoodLog.date.desc()).all()
+    return jsonify([log.to_dict() for log in logs]), 200
+
+@app.route("/mood_history", methods=["DELETE"])
+@jwt_required()
+def clear_mood_history():
+    user_id = get_jwt_identity()
+    try:
+        MoodLog.query.filter_by(user_id=int(user_id)).delete()
+        db.session.commit()
+        return jsonify({"msg": "Mood history cleared"}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"msg": "Failed to clear history"}), 500
 
 # --- Run Flask app ---
 if __name__ == '__main__':

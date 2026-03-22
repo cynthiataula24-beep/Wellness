@@ -71,6 +71,22 @@ interface ApiService {
     fun clearChatHistory(
         @Header("Authorization") token: String
     ): Call<ResponseBody>
+
+    @POST("analyze")
+    fun analyzeMood(
+        @Header("Authorization") token: String,
+        @Body request: MoodRequest
+    ): Call<MoodLog>
+
+    @GET("mood_history")
+    fun getMoodHistory(
+        @Header("Authorization") token: String
+    ): Call<List<MoodLog>>
+
+    @DELETE("mood_history")
+    fun clearMoodHistory(
+        @Header("Authorization") token: String
+    ): Call<ResponseBody>
 }
 
 
@@ -96,4 +112,15 @@ data class ChatRequest(
 // For the POST /chat response
 data class ChatResponse(
     val reply: String
+)
+
+data class MoodRequest(val text: String)
+
+data class MoodLog(
+    val id: Int,
+    val text: String,
+    val compound: Double,
+    val emotion: String,
+    val recommendation: String,
+    val date: String
 )
