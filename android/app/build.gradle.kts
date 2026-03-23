@@ -48,8 +48,8 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
     implementation("com.google.android.material:material:1.12.0")
-    
-        implementation("androidx.compose.material:material-icons-extended")
+
+    implementation("androidx.compose.material:material-icons-extended")
 
     implementation("com.patrykandpatrick.vico:compose-m3:1.13.0")
 

@@ -91,7 +91,7 @@ fun MoodScreen() {
             enabled = !isLoading,
             shape = RoundedCornerShape(8.dp)
         ) {
-            Text(if (isLoading) "Analyzing..." else "Check My Mood")
+            Text(if (isLoading) "Analyzing..." else "Analyze Mood")
         }
 
         // --- AI Result Card ---
@@ -101,7 +101,7 @@ fun MoodScreen() {
                 modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    Text("Current Vibe: ${result.emotion.uppercase()}", fontWeight = FontWeight.Bold, color = Color(0xFF0369A1))
+                    Text("Current Mood: ${result.emotion.uppercase()}", fontWeight = FontWeight.Bold, color = Color(0xFF0369A1))
                     Text(result.recommendation, fontSize = 14.sp, color = Color.DarkGray)
                 }
             }
@@ -121,7 +121,7 @@ fun MoodScreen() {
 
         HorizontalDivider(modifier = Modifier.padding(vertical = 20.dp), color = Color(0xFFE2E8F0))
 
-        Text("Recent History", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color(0xFF334155))
+        Text("Mood History", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color(0xFF334155))
         Spacer(modifier = Modifier.height(8.dp))
 
         LazyColumn(
