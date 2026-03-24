@@ -6,6 +6,14 @@ import google.generativeai as genai
 import nltk
 from flask_cors import CORS  # <--- 1. Import this
 from datetime import datetime
+# --- Auth & Database Setup (append below your existing code) ---
+from flask_sqlalchemy import SQLAlchemy
+from flask_migrate import Migrate
+from flask_bcrypt import Bcrypt
+from flask_jwt_extended import (
+    JWTManager, create_access_token, jwt_required, get_jwt_identity
+)
+from datetime import timedelta
 # --- Download VADER lexicon once ---
 nltk.download("vader_lexicon")
 
@@ -95,14 +103,7 @@ def chat():
         return jsonify({"reply": "Internal Server Error. Try again later."}), 500
 
 
-# --- Auth & Database Setup (append below your existing code) ---
-from flask_sqlalchemy import SQLAlchemy
-from flask_migrate import Migrate
-from flask_bcrypt import Bcrypt
-from flask_jwt_extended import (
-    JWTManager, create_access_token, jwt_required, get_jwt_identity
-)
-from datetime import timedelta
+
 
 # Database config (SQLite by default; switch to Postgres/MySQL later)
 app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DATABASE_URL", "sqlite:///haven.db")
@@ -445,6 +446,104 @@ def clear_mood_history():
         db.session.rollback()
         return jsonify({"msg": "Failed to clear history"}), 500
 
+class Habit(db.Model):
+    __tablename__ = "Habits"
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    name = db.Column(db.String(100), nullable=False)
+    target = db.Column(db.Float, nullable=False)
+    current = db.Column(db.Float, default=0.0)
+    unit = db.Column(db.String(50))
+    color = db.Column(db.String(20), default='#0d6efd')
+    last_updated = db.Column(db.Date, default=datetime.utcnow().date())
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "name": self.name,
+            "target": self.target,
+            "current": self.current,
+            "unit": self.unit,
+            "color": self.color,
+            "last_updated": self.last_updated.isoformat()
+        }  
+    
+
+
+# --- GET all habits and POST a new habit ---
+@app.route('/habits', methods=['GET', 'POST'])
+@jwt_required()
+def handle_habits():
+    user_id = get_jwt_identity()
+    today = datetime.utcnow().date()
+
+    if request.method == 'GET':
+        habits = Habit.query.filter_by(user_id=user_id).all()
+        
+        # --- NEW: Check and Create Defaults if missing ---
+        existing_names = [h.name for h in habits]
+        defaults = [
+            {"name": "Water Intake", "target": 8, "unit": "Glasses", "color": "#0d6efd"},
+            {"name": "Daily Steps", "target": 10000, "unit": "Steps", "color": "#198754"},
+            {"name": "Coding", "target": 2, "unit": "Hours", "color": "#6610f2"}
+        ]
+        
+        for d in defaults:
+            if d["name"] not in existing_names:
+                new_d = Habit(user_id=user_id, name=d["name"], target=d["target"], 
+                              unit=d["unit"], color=d["color"], current=0.0, last_updated=today)
+                db.session.add(new_d)
+        
+        if any(d["name"] not in existing_names for d in defaults):
+            db.session.commit()
+            habits = Habit.query.filter_by(user_id=user_id).all() # Refresh list
+
+        # Daily Refresh Logic
+        for h in habits:
+            if h.last_updated < today:
+                h.current = 0
+                h.last_updated = today
+        db.session.commit()
+        return jsonify([h.to_dict() for h in habits]), 200
+
+    # POST logic remains the same...
+
+    if request.method == 'POST':
+        data = request.get_json()
+        new_habit = Habit(
+            user_id=user_id,
+            name=data.get('name'),
+            target=data.get('target'),
+            unit=data.get('unit'),
+            color=data.get('color', '#0d6efd'),
+            current=0.0,
+            last_updated=today
+        )
+        db.session.add(new_habit)
+        db.session.commit()
+        return jsonify(new_habit.to_dict()), 201
+
+# --- UPDATE (Increment) or DELETE a specific habit ---
+@app.route('/habits/<int:habit_id>', methods=['PUT', 'DELETE'])
+@jwt_required()
+def handle_single_habit(habit_id):
+    user_id = get_jwt_identity()
+    habit = Habit.query.filter_by(id=habit_id, user_id=user_id).first_or_404()
+
+    if request.method == 'PUT':
+        data = request.get_json()
+        if 'current' in data:
+            habit.current = data['current']
+        
+        habit.last_updated = datetime.utcnow().date()
+        db.session.commit()
+        return jsonify(habit.to_dict()), 200
+
+    if request.method == 'DELETE':
+        db.session.delete(habit)
+        db.session.commit()
+        return jsonify({"message": "Habit deleted"}), 200   
+    
 # --- Run Flask app ---
 if __name__ == '__main__':
     with app.app_context():
