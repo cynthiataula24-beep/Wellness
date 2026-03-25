@@ -77,6 +77,14 @@ class MainActivity : ComponentActivity() {
                         composable("journal") { JournalScreen() }
                         composable("mood") { MoodScreen() }
                         composable("chat") { ChatScreen() }
+                        composable("goals") {
+                            GoalsScreen(apiService = RetrofitClient.instance)
+                        }
+
+                        composable("help") {
+                            HelpScreen()
+                        }
+
                     }
                 }
             }

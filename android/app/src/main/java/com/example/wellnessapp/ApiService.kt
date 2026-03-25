@@ -2,11 +2,13 @@ package com.example.wellnessapp
 
 import okhttp3.ResponseBody
 import retrofit2.Call
+import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.POST
 import retrofit2.http.GET
 import retrofit2.http.Header
+import retrofit2.http.PUT
 import retrofit2.http.Path
 
 interface ApiService {
@@ -87,7 +89,32 @@ interface ApiService {
     fun clearMoodHistory(
         @Header("Authorization") token: String
     ): Call<ResponseBody>
-}
+
+
+        @GET("habits")
+        suspend fun getHabits(@Header("Authorization") token: String): List<Habit>
+
+        @PUT("habits/{id}")
+        suspend fun updateHabit(
+            @Header("Authorization") token: String,
+            @Path("id") id: Int,
+            @Body update: HabitUpdate
+        ): Habit
+
+    // --- Add this to your ApiService.kt ---
+    @POST("habits")
+    suspend fun createHabit(
+        @Header("Authorization") token: String,
+        @Body habit: HabitCreateRequest
+    ): Habit
+
+    @DELETE("habits/{id}")
+    suspend fun deleteHabit(
+        @Header("Authorization") token: String,
+        @Path("id") id: Int
+    ): Response<Unit>
+    }
+
 
 
 // Matches AssistantSettings.to_dict()
@@ -124,3 +151,40 @@ data class MoodLog(
     val recommendation: String,
     val date: String
 )
+
+data class Habit(
+    val id: Int,
+    val name: String,
+    val target: Float,
+    val current: Float,
+    val unit: String,
+    val color: String
+)
+
+data class HabitUpdate(
+    val current: Float
+)
+
+// --- Add these to your Models.kt ---
+data class HabitCreateRequest(
+    val name: String,
+    val target: Float,
+    val unit: String,
+    val color: String,
+    val current: Float = 0f
+)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

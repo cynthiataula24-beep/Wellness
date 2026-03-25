@@ -48,7 +48,7 @@ fun HomeScreen(userName: String, onNavigate: (String) -> Unit) {
             modifier = Modifier.padding(top = 4.dp, bottom = 24.dp)
         )
 
-        // Feature Cards
+        // 1. Self Love Card
         WellnessCard(
             title = "Self Love",
             description = "Learn and practice self-love from the basics upward.",
@@ -58,15 +58,17 @@ fun HomeScreen(userName: String, onNavigate: (String) -> Unit) {
             onClick = { onNavigate("self_love") }
         )
 
+        // 2. Goals Card - Now correctly linked
         WellnessCard(
             title = "Goals",
-            description = "Track habits like hydration, sleep, and exercise.",
+            description = "Track habits like hydration, steps, and deep work.",
             buttonText = "View Goals",
             buttonColor = Color(0xFF198754), // Bootstrap Success
             icon = Icons.Default.CheckCircle,
             onClick = { onNavigate("goals") }
         )
 
+        // 3. Wellness Card
         WellnessCard(
             title = "Wellness",
             description = "Explore articles, grounding exercises, and resources.",
@@ -74,6 +76,16 @@ fun HomeScreen(userName: String, onNavigate: (String) -> Unit) {
             buttonColor = Color(0xFF0DCAF0), // Bootstrap Info
             icon = Icons.Default.Info,
             onClick = { onNavigate("tips") }
+        )
+
+        // 4. Get Help Card - NEW Addition
+        WellnessCard(
+            title = "Get Help",
+            description = "Access emergency contacts and professional support services.",
+            buttonText = "Find Support",
+            buttonColor = Color(0xFFFFC107), // Bootstrap Warning (Yellow)
+            icon = Icons.Default.Phone,
+            onClick = { onNavigate("help") }
         )
 
         // Motivational Quote Card
@@ -139,6 +151,7 @@ fun WellnessCard(
                 colors = ButtonDefaults.buttonColors(containerColor = buttonColor),
                 shape = RoundedCornerShape(12.dp)
             ) {
+                // If button color is Yellow (Warning), use Black text for readability
                 Text(buttonText, color = if (buttonColor == Color(0xFFFFC107)) Color.Black else Color.White)
             }
         }
