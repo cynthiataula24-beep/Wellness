@@ -35,15 +35,20 @@ genai.configure(api_key=API_KEY)
 # --- Flask app setup ---
 app = Flask(__name__)
 # FIX 1: Allow CORS from all origins so your IP address connection works
-CORS(app, resources={r"/*": {"origins": "*"}})
+# --- 1. UPDATED CORS (Ensures headers like Authorization work smoothly) ---
+CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
 
 # --- Constants ---
 MODEL = "gemini-2.5-flash"
 SYSTEM_PROMPT = (
-    "You are an emotionally supportive assistant. "
-    "Respond with empathy, warmth, and understanding. "
-    "Keep replies short (1–3 short paragraphs). "
-    "Do not provide medical advice."
+    "You are a steady, gentle, and deeply human friend. Your tone is simple and sincere. "
+    "CORE PERSONALITY: "
+    "1. Avoid slang and 'tech-speak' (e.g., do NOT use 'bandwidth', 'sucks', 'totally', 'oh man', 'no way'). "
+    "2. If the user is sad or low, do not try to 'fix' it or over-talk. Speak softly. "
+    "3. Use short, meaningful sentences. Avoid being verbose. "
+    "4. Never use robotic 'AI' phrases like 'I am here for you' or 'I hear you.' "
+    "5. When the user is happy, be genuinely warm. When they are low, be a quiet, comforting shadow. "
+    "6. Do not offer unsolicited advice unless they ask 'What should I do?'"
 )
 
 # --- Create model instance ---
@@ -544,6 +549,183 @@ def handle_single_habit(habit_id):
         db.session.commit()
         return jsonify({"message": "Habit deleted"}), 200   
     
+class SelfLoveProgress(db.Model):
+    __tablename__ = "self_love_progress"
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    chapter_id = db.Column(db.Integer, nullable=False)
+    week_id = db.Column(db.Integer, nullable=False)
+    answers = db.Column(db.JSON, nullable=False) # Stores the dict of answers
+    ai_feedback = db.Column(db.Text, nullable=True) # Optional: store the AI response too
+    date_completed = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            "chapter_id": self.chapter_id,
+            "week_id": self.week_id,
+            "answers": self.answers,
+            "ai_feedback": self.ai_feedback
+        }
+        
+    # --- Self-Love Progress Routes ---
+
+@app.route('/self-love/progress/<int:week_id>', methods=['GET'])
+@jwt_required()
+def get_progress(week_id):
+    user_id = get_jwt_identity()
+    progress = SelfLoveProgress.query.filter_by(user_id=int(user_id), week_id=week_id).first()
+    if not progress:
+        return jsonify({"answers": {}, "ai_feedback": ""}), 200
+    return jsonify(progress.to_dict()), 200
+
+@app.route('/self-love/save', methods=['POST'])
+@jwt_required()
+def save_progress():
+    user_id = get_jwt_identity()
+    data = request.json
+    
+    # Try to find existing progress for this specific week
+    progress = SelfLoveProgress.query.filter_by(
+        user_id=int(user_id), 
+        week_id=data['week_id']
+    ).first()
+    
+    if not progress:
+        progress = SelfLoveProgress(
+            user_id=int(user_id), 
+            week_id=data['week_id'],
+            chapter_id=data['chapter_id']
+        )
+        db.session.add(progress)
+        
+    progress.answers = data['answers']
+    db.session.commit()
+    
+    return jsonify({"message": "Progress saved locally"}), 200
+
+
+    user_id = get_jwt_identity()
+    data = request.json
+    week_title = data.get('week_title')
+    reflections = data.get('reflections', {})
+    
+    # Build context from the user's answers
+    user_context = "\n".join([f"Q/A: {val}" for key, val in reflections.items() if val])
+    
+    if not user_context:
+        return jsonify({"feedback": "You didn't write much today, but remember that even showing up is a win. I'm proud of you for being here."})
+
+    prompt = (
+        f"Context: The user is completing a self-love workshop week titled '{week_title}'.\n"
+        f"User Reflections:\n{user_context}\n\n"
+        "Task: Act as an empathetic guide. Provide a 3-sentence response validating their effort "
+        "and offering a gentle, warm thought. Do not use robotic 'As an AI' language."
+    )
+    
+    try:
+        # Using your existing model instance from the top of app.py
+        response = model.generate_content(prompt)
+        feedback_text = response.text
+
+        # Optional: Save this feedback to the DB so it's there next time they log in
+        # We find the progress they just saved in the previous call
+        progress = SelfLoveProgress.query.filter_by(user_id=int(user_id), week_id=data.get('week_id')).first()
+        if progress:
+            progress.ai_feedback = feedback_text
+            db.session.commit()
+
+        return jsonify({"feedback": feedback_text})
+    except Exception as e:
+        print(f"AI Error: {e}")
+        return jsonify({"feedback": "I'm listening and I'm so proud of the work you're putting in today."}), 200
+
+# --- 3. DYNAMIC AI REFLECTION ROUTE ---
+@app.route('/ai/reflect', methods=['POST'])
+@jwt_required()
+def get_ai_reflection():
+    user_id = get_jwt_identity()
+    data = request.json
+    week_title = data.get('week_title', "this journey")
+    reflections = data.get('reflections', {})
+    
+    # Check for custom AI Name to use in the persona
+    settings = AssistantSettings.query.filter_by(user_id=user_id).first()
+    ai_name = settings.name if settings else "Haven"
+    
+    # 1. Build context and calculate "Depth"
+    user_context = "\n".join([f"- {val}" for val in reflections.values() if val])
+    word_count = len(user_context.split())
+    
+    if not user_context.strip():
+        return jsonify({"feedback": f"I'm here, even in the silence. Take your time, I'm proud of you for just opening this page today. — {ai_name}"})
+
+    # 2. Dynamic Instructions based on word count
+    if word_count > 150:
+        depth_instruction = (
+            "The user has shared a deep, vulnerable reflection. Respond with profound empathy and "
+            "provide 3 distinct, thoughtful insights. Match their energy with a longer, soulful 3-paragraph reply."
+        )
+    elif word_count > 60:
+        depth_instruction = (
+            "The user provided good detail. Provide a warm, 2-paragraph response acknowledging their "
+            "specific efforts and offering a gentle observation about their growth."
+        )
+    else:
+        depth_instruction = (
+            "The user was brief. Provide a short, 3-sentence encouraging nudge. "
+            "Validate that even small steps are progress."
+        )
+
+    prompt = (
+        f"You are {ai_name}, an empathetic and wise guide. "
+        f"Context: The user is in a self-love workshop week: '{week_title}'.\n"
+        f"User Reflections:\n{user_context}\n\n"
+        f"Task: {depth_instruction} "
+        "Do not use robotic 'As an AI' language. Speak directly to them with warmth."
+    )
+    
+    try:
+        # Using your global 'model' instance
+        response = model.generate_content(prompt)
+        feedback_text = response.text
+
+        # Save feedback to DB
+        progress = SelfLoveProgress.query.filter_by(user_id=int(user_id), week_id=data.get('week_id')).first()
+        if progress:
+            progress.ai_feedback = feedback_text
+            db.session.commit()
+
+        return jsonify({"feedback": feedback_text})
+    except Exception as e:
+        print(f"AI Error: {e}")
+        return jsonify({"feedback": f"I'm listening, and I'm so proud of the work you're putting in today. — {ai_name}"}), 200
+
+
+# --- 2. UPDATED USER PROFILE ROUTE ---
+@app.route('/auth/user-profile', methods=['GET'])
+@jwt_required()
+def get_profile():
+    try:
+        user_id = get_jwt_identity()
+        user = User.query.get(int(user_id))
+        
+        if not user:
+            return jsonify({"msg": "User not found"}), 404
+
+        # Check AssistantSettings for a custom name, fallback to "Haven"
+        settings = AssistantSettings.query.filter_by(user_id=user_id).first()
+        ai_name = settings.name if settings else "Haven"
+
+        return jsonify({
+            "display_name": user.display_name,
+            "email": user.email,
+            "ai_name": ai_name,
+            "profile_pic": user.profile_pic
+        }), 200
+    except Exception as e:
+        return jsonify({"msg": "Error fetching profile", "error": str(e)}), 500
+
+
 # --- Run Flask app ---
 if __name__ == '__main__':
     with app.app_context():

@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import styles from './SelfLove.module.css';
 
+// ... (Keep your journeyData object here) ...
 const journeyData = {
   chapters: [
     {
@@ -450,14 +451,11 @@ const journeyData = {
   ]
 },
 
-
-
 {
     id:4,
     title: "Certificate: The Voice Tamer"
 
 }
-
 
       ]
        },
@@ -650,31 +648,122 @@ title:"Certificate: The New Voice",
 };
 
 
+
 const SelfLoveApp = () => {
   const [activeChapter, setActiveChapter] = useState(null);
   const [activeWeek, setActiveWeek] = useState(null);
   const [inputs, setInputs] = useState({});
+  const [aiFeedback, setAiFeedback] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const [aiName, setAiName] = useState("Haven"); // Default name
 
-  const handleInputChange = (id, value) => {
-    setInputs({ ...inputs, [id]: value });
+  const API_BASE_URL = "http://127.0.0.1:5000";
+  const token = localStorage.getItem('access_token');
+
+  // Load AI name and existing progress
+  useEffect(() => {
+    if (token) {
+      // Fetch the custom AI name (if you have an endpoint for user settings)
+      fetch(`${API_BASE_URL}/auth/user-profile`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.ai_name) setAiName(data.ai_name);
+      })
+      .catch(err => console.error("Error fetching AI name:", err));
+    }
+
+    if (activeWeek && token) {
+      fetch(`${API_BASE_URL}/self-love/progress/${activeWeek.id}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.answers) setInputs(data.answers);
+        if (data.ai_feedback) setAiFeedback(data.ai_feedback);
+      })
+      .catch(err => console.error("Error loading progress:", err));
+    }
+  }, [activeWeek, token]);
+
+  // Helper to auto-resize textareas
+  const autoResize = (e) => {
+    e.target.style.height = 'auto';
+    e.target.style.height = e.target.scrollHeight + 'px';
   };
 
-  // 1. Dashboard View (Chapters)
+  const handleInputChange = (id, value, e) => {
+    setInputs(prev => ({ ...prev, [id]: value }));
+    if (e) autoResize(e);
+  };
+
+  const handleSaveProgress = async () => {
+    try {
+      await fetch(`${API_BASE_URL}/self-love/save`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          week_id: activeWeek.id,
+          chapter_id: activeChapter.id,
+          answers: inputs
+        })
+      });
+      console.log("Progress synced.");
+    } catch (error) {
+      console.error("Failed to sync progress:", error);
+    }
+  };
+
+  const handleCompleteWeek = async () => {
+    if (!activeWeek || !activeChapter) return;
+    setIsSaving(true);
+    setAiFeedback(`Consulting ${aiName}...`);
+
+    try {
+      await handleSaveProgress();
+
+      const aiResponse = await fetch(`${API_BASE_URL}/ai/reflect`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          week_id: activeWeek.id,
+          week_title: activeWeek.title,
+          reflections: inputs 
+        })
+      });
+      
+      const aiData = await aiResponse.json();
+      setAiFeedback(aiData.feedback);
+      alert("Week complete!");
+    } catch (error) {
+      console.error("Error:", error);
+      alert("Something went wrong.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // --- VIEWS ---
   if (!activeChapter) {
     return (
       <div className="container py-5">
         <header className="text-center mb-5">
           <h1 className="display-4 fw-bold">Self-Love Roadmap</h1>
-          <p className="lead text-muted">A journey from the basics of kindness to the intricacies of your soul.</p>
         </header>
         <div className="row g-4">
           {journeyData.chapters.map((ch) => (
-            <div key={ch.id} className="col-md-6" onClick={() => setActiveChapter(ch)}>
+            <div key={ch.id} className="col-md-6" style={{cursor: 'pointer'}} onClick={() => setActiveChapter(ch)}>
               <div className={`card ${styles.chapterCard} h-100 border-0 shadow-sm p-4`}>
-
                 <h3>{ch.title}</h3>
                 <p>{ch.description}</p>
-                <span className={`badge ${styles.badge}`}>Start Journey</span>
+                <span className="badge bg-primary w-25 p-2">View Weeks</span>
               </div>
             </div>
           ))}
@@ -683,20 +772,17 @@ const SelfLoveApp = () => {
     );
   }
 
-  // 2. Weeks View
   if (activeChapter && !activeWeek) {
     return (
       <div className="container py-5">
-        <button className="btn btn-link mb-4 p-0 text-decoration-none" onClick={() => setActiveChapter(null)}>← Back to Chapters</button>
+        <button className="btn btn-outline-secondary mb-4" onClick={() => setActiveChapter(null)}>← Back</button>
         <h2 className="mb-3">{activeChapter.title}</h2>
-        <p className="mb-5">{activeChapter.intro}</p>
         <div className="row g-3">
-          {activeChapter.weeks.map((wk) => (
-            <div key={wk.id} className="col-12" onClick={() => setActiveWeek(wk)}>
-              <div className={`card ${styles.weekCard} p-4 border-0 shadow-sm d-flex flex-row justify-content-between align-items-center`}>
-
+          {activeChapter.weeks?.map((wk) => (
+            <div key={wk.id} className="col-12" style={{cursor: 'pointer'}} onClick={() => setActiveWeek(wk)}>
+              <div className={`card ${styles.weekCard} p-4 border-0 shadow-sm d-flex flex-row justify-content-between`}>
                 <h4 className="mb-0">{wk.title}</h4>
-                <span className="text-muted"> ➡️</span>
+                <span>Go ➡️</span>
               </div>
             </div>
           ))}
@@ -705,36 +791,68 @@ const SelfLoveApp = () => {
     );
   }
 
-  // 3. Days View
   return (
     <div className="container py-5">
-      <button className="btn btn-link mb-4 p-0 text-decoration-none" onClick={() => setActiveWeek(null)}>← Back to Weeks</button>
-      <h2 className="mb-4 text-center">{activeWeek.title}</h2>
-      
-      {activeWeek.days.map((d) => (
-        <div key={d.day} className={`card ${styles.dayCard} mb-4 border-0 shadow-sm p-4`}>
-          <h5 className={`${styles.textPrimary} mb-3`}>Day {d.day}: {d.task}</h5>
-          <p className="text-muted">{d.instruction}</p>
-          <label className="form-label small fw-bold mt-2">{d.prompt}</label>
-          <textarea 
-          className={`form-control bg-light border-0 ${styles.textareaFocus}`}
-            rows="3" 
-            placeholder="Type your heart out..."
-            onChange={(e) => handleInputChange(`ch${activeChapter.id}w${activeWeek.id}d${d.day}`, e.target.value)}
-          ></textarea>
-        </div>
-      ))}
+      <button className="btn btn-outline-secondary mb-4" onClick={() => { setActiveWeek(null); setAiFeedback(""); }}>← All Weeks</button>
+      <h2 className="fw-bold mb-4 text-primary">{activeWeek.title}</h2>
 
-      <div className="reflection-section mt-5 p-4 rounded bg-white shadow-sm">
-        <h4 className="mb-4">🌼 Reflection Check-In</h4>
-        {activeWeek.reflection.map((q, idx) => (
-          <div key={idx} className="mb-3">
-            <p className="mb-1">{q}</p>
-            <textarea className="form-control border-0 bg-light" rows="2"></textarea>
+      {/* DAILY TASKS SECTION */}
+      <div className="row g-4 mb-5">
+        {activeWeek.days?.map((d) => (
+          <div key={d.day} className="col-12">
+            <div className="card p-4 border-0 shadow-sm bg-light">
+              <div className="d-flex justify-content-between align-items-center mb-2">
+                <h5 className="mb-0 text-secondary">Day {d.day}: {d.task}</h5>
+                <button className="btn btn-sm btn-success" onClick={handleSaveProgress}>Save Entry</button>
+              </div>
+              <p className="small text-muted">{d.instruction}</p>
+              <label className="form-label fw-bold mt-2">{d.prompt}</label>
+              <textarea 
+                className="form-control" 
+                style={{ resize: 'none', overflow: 'hidden', minHeight: '50px' }}
+                rows="1"
+                value={inputs[`d${d.day}`] || ""}
+                onChange={(e) => handleInputChange(`d${d.day}`, e.target.value, e)}
+              ></textarea>
+            </div>
           </div>
         ))}
-        <button className="btn btn-primary w-100 mt-3 py-3 rounded-pill shadow">Complete Week</button>
       </div>
+
+      {/* REFLECTION SECTION */}
+      {activeWeek.reflection && (
+        <div className="card p-4 border-0 shadow-lg mb-5 border-start border-primary border-5">
+          <h4 className="mb-4">Final Reflections</h4>
+          {activeWeek.reflection.map((ref, idx) => (
+            <div key={idx} className="mb-3">
+              <label className="form-label">{ref}</label>
+              <textarea 
+                className="form-control" 
+                style={{ resize: 'none', overflow: 'hidden', minHeight: '50px' }}
+                rows="1"
+                value={inputs[`r${idx}`] || ""}
+                onChange={(e) => handleInputChange(`r${idx}`, e.target.value, e)}
+              ></textarea>
+            </div>
+          ))}
+
+          <button 
+            className="btn btn-primary btn-lg mt-3 shadow" 
+            onClick={handleCompleteWeek}
+            disabled={isSaving}
+          >
+            {isSaving ? "Saving..." : "Submit for Feedback"}
+          </button>
+        </div>
+      )}
+
+      {/* PERSISTENT AI FEEDBACK */}
+      {aiFeedback && (
+        <div className="alert alert-info border-0 shadow p-4 animate__animated animate__fadeIn">
+          <h5 className="fw-bold text-primary">Note from {aiName}:</h5>
+          <p className="mb-0 fs-5" style={{ whiteSpace: 'pre-wrap' }}>{aiFeedback}</p>
+        </div>
+      )}
     </div>
   );
 };

@@ -12,6 +12,7 @@ const LoginPage = () => {
 
   // Using the IP address instead of localhost so web and mobile both work
   const API_BASE = "http://192.168.1.132:5000";
+  //const API_BASE = "http://127.0.0.1:5000";
 
   const handleAction = async (e, type) => {
     e.preventDefault();
