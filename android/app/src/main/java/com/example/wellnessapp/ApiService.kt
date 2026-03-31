@@ -175,7 +175,27 @@ data class HabitCreateRequest(
 )
 
 
+data class DayTask(
+    val day: Int,
+    val task: String,
+    val instruction: String,
+    val prompt: String
+)
 
+data class Week(
+    val id: Int,
+    val title: String,
+    val days: List<DayTask>,
+    val reflection: List<String>
+)
+
+data class Chapter(
+    val id: Int,
+    val title: String,
+    val description: String,
+    val intro: String,
+    val weeks: List<Week>
+)
 
 
 

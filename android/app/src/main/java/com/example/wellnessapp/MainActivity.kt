@@ -84,6 +84,29 @@ class MainActivity : ComponentActivity() {
                         composable("help") {
                             HelpScreen()
                         }
+                        // In MainActivity NavHost
+                        composable("self_love") {
+                            var selectedWeek by remember { mutableStateOf<Week?>(null) }
+
+                            if (selectedWeek == null) {
+                                SelfLoveScreen(
+                                    chapters = SelfLoveData.chapters,
+                                    onWeekClick = { week -> selectedWeek = week }
+                                )
+                            } else {
+                                WeekDetailScreen(
+                                    week = selectedWeek!!,
+                                    onBack = { selectedWeek = null },
+                                    // ADD THESE TWO LINES TO FIX THE ERROR:
+                                    onSaveEntry = { dayId, text ->
+                                        /* Logic to sync Day $dayId with app.py goes here later */
+                                    },
+                                    onSubmitReflection = { reflectionMap ->
+                                        /* Logic to send feedback to AI assistant goes here later */
+                                    }
+                                )
+                            }
+                        }
 
                     }
                 }
@@ -91,3 +114,5 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
+
+
